@@ -6,6 +6,7 @@ from src.agents.bullet_generator import generate_bullet_variants
 from src.agents.question_planner import pick_next_gap
 from src.agents.risk_auditor import audit_bullet
 from src.i18n import t
+from src.local_store import LocalStore
 from src.ui.components import current_lang
 from src.ui.style import hero
 
@@ -50,6 +51,13 @@ def render() -> None:
             st.warning(t("writer.no_requirement", lang))
         else:
             st.session_state["bullets"] = generate_bullet_variants(facts, requirement=requirement, lang=lang)
+            LocalStore().record_event(
+                "bullet_generation",
+                t("writer.generate", lang),
+                requirement,
+                surface="web",
+                metadata={"bullets": len(st.session_state["bullets"]), "facts": len(facts)},
+            )
 
     for bullet in st.session_state.get("bullets", []):
         variant_label = t(f"writer.variant.{bullet.variant}", lang)

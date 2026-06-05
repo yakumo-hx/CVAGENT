@@ -6,6 +6,7 @@ from src.i18n import DEFAULT_LANG, LANGUAGES, t
 from src.ui import (
     evidence_page,
     export_page,
+    history_page,
     interview_page,
     jd_page,
     matrix_page,
@@ -13,6 +14,8 @@ from src.ui import (
     rewrite_page,
     settings_page,
 )
+from src.local_store import LocalStore
+from src.ui.guide import render_web_guide
 from src.ui.style import apply_style
 
 
@@ -25,6 +28,7 @@ PAGES = [
     ("evidence", "nav.evidence", evidence_page.render),
     ("writer", "nav.writer", rewrite_page.render),
     ("export", "nav.export", export_page.render),
+    ("history", "nav.history", history_page.render),
 ]
 
 
@@ -54,6 +58,7 @@ def main() -> None:
     )
     init_state()
     apply_style()
+    store = LocalStore()
 
     lang_name_to_code = {name: code for code, name in LANGUAGES.items()}
     selected_language = st.sidebar.selectbox(
@@ -82,3 +87,4 @@ def main() -> None:
     selected_index = page_labels.index(selected_label)
     st.session_state["page_id"] = page_ids[selected_index]
     PAGES[selected_index][2]()
+    render_web_guide(lang, store)

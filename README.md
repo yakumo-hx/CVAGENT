@@ -31,6 +31,8 @@ JD analysis -> evidence gap matrix -> branching interview -> fact cards -> groun
 - Grounded bullet generator
 - Risk auditor for unsupported metrics and role inflation
 - Markdown / JSON / HTML export scaffold
+- Local records for past submissions, saved file snapshots, and historical token usage
+- First-run local guide, rotating bottom-right tips, and update notices
 
 ## Quick Start
 
@@ -116,6 +118,15 @@ Both versions support Chinese / English UI switching, with Chinese as the defaul
 6. Evidence Cards: confirm, edit, or delete extracted fact cards.
 7. Resume Writer: generate conservative, standard, and JD-strong bullet variants from confirmed facts.
 8. Export: download Markdown, JSON, gap report, and interview prep files.
+9. Local Records: review past submissions, saved files, local profile id, and historical token usage.
+
+## Local Records And Updates
+
+- CVAGENT uses a local profile instead of a remote account.
+- Records are stored outside the repository under the user app-data directory, or under `CVAGENT_HOME` when that environment variable is set.
+- The local store has `schema_version` migrations so pulling a newer version keeps old records readable.
+- On first open, the app shows a guide describing each page. Later it keeps a small bottom-right mouse guide with rotating tips and the feedback email.
+- When `APP_VERSION` changes, the app shows prepared release notes from `src/release_notes.py`.
 
 ## Privacy
 

@@ -8,6 +8,7 @@ import streamlit as st
 
 from src.deepseek_client import DeepSeekClient
 from src.i18n import DEFAULT_LANG, t
+from src.local_store import LocalStore
 from src.security import mask_secret, redact_secrets
 from src.utils.token_logger import TokenLog
 
@@ -24,6 +25,7 @@ def add_token_log(log: TokenLog | None) -> None:
     if log is None:
         return
     st.session_state.setdefault("token_logs", []).append(log)
+    LocalStore().append_token_log(log, surface="web")
 
 
 def token_summary() -> dict[str, int]:
@@ -43,6 +45,7 @@ def current_lang() -> str:
 def render_token_dashboard(compact: bool = False) -> None:
     lang = current_lang()
     summary = token_summary()
+    lifetime = LocalStore().token_summary()
     if compact:
         st.caption(
             t(
@@ -54,12 +57,31 @@ def render_token_dashboard(compact: bool = False) -> None:
                 calls=summary["calls"],
             )
         )
+        if lifetime["lifetime_calls"]:
+            st.caption(
+                t(
+                    "token.compact",
+                    lang,
+                    total=lifetime["lifetime_total_tokens"],
+                    input=lifetime["lifetime_input_tokens"],
+                    output=lifetime["lifetime_output_tokens"],
+                    calls=lifetime["lifetime_calls"],
+                )
+                + f" · {t('token.lifetime', lang)}"
+            )
         return
+    st.caption(t("token.session", lang))
     cols = st.columns(4)
     cols[0].metric(t("token.calls", lang), summary["calls"])
     cols[1].metric(t("token.input", lang), summary["input_tokens"])
     cols[2].metric(t("token.output", lang), summary["output_tokens"])
     cols[3].metric(t("token.total", lang), summary["total_tokens"])
+    st.caption(t("token.lifetime", lang))
+    all_cols = st.columns(4)
+    all_cols[0].metric(t("token.lifetime_calls", lang), lifetime["lifetime_calls"])
+    all_cols[1].metric(t("token.input", lang), lifetime["lifetime_input_tokens"])
+    all_cols[2].metric(t("token.output", lang), lifetime["lifetime_output_tokens"])
+    all_cols[3].metric(t("token.lifetime_total", lang), lifetime["lifetime_total_tokens"])
 
 
 def render_token_log_table() -> None:

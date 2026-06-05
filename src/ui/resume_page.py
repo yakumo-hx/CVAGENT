@@ -5,12 +5,14 @@ import streamlit as st
 from src.agents.resume_parser import parse_resume_text_fallback
 from src.agents.llm_workflow import parse_resume_with_deepseek
 from src.i18n import t
+from src.local_store import LocalStore
 from src.ui.components import add_token_log, current_lang, get_client_from_state, render_key_status, render_token_dashboard
 from src.ui.style import hero
 
 
 def render() -> None:
     lang = current_lang()
+    store = LocalStore()
     hero(t("nav.resume", lang), t("resume.subtitle", lang))
     render_key_status()
     render_token_dashboard(compact=True)
@@ -24,8 +26,11 @@ def render() -> None:
             submitted = st.form_submit_button(t("resume.parse", lang))
 
         if submitted:
+            file_ids: list[str] = []
             if uploaded:
-                text = uploaded.read().decode("utf-8", errors="ignore")
+                uploaded_bytes = uploaded.read()
+                file_ids.append(store.save_file_bytes(uploaded.name, uploaded_bytes, label="resume_upload", surface="web"))
+                text = uploaded_bytes.decode("utf-8", errors="ignore")
 
             if not text.strip():
                 st.warning(t("resume.empty", lang))
@@ -40,6 +45,16 @@ def render() -> None:
                 else:
                     resume = parse_resume_text_fallback(text, lang)
                 st.session_state["master_resume"] = resume
+                if not uploaded:
+                    file_ids.append(store.save_text_snapshot("resume_paste", text, surface="web"))
+                store.record_event(
+                    "resume_parse",
+                    t("resume.parsed", lang),
+                    f"{len(text)} chars, projects={len(resume.projects)}, experiences={len(resume.experiences)}",
+                    surface="web",
+                    files=file_ids,
+                    metadata={"projects": len(resume.projects), "experiences": len(resume.experiences), "skills": len(resume.skills)},
+                )
                 st.success(t("resume.parsed", lang))
 
     with right:

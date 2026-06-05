@@ -5,6 +5,7 @@ import streamlit as st
 
 from src.agents.evidence_matcher import build_evidence_matrix, gap_text, next_question, status_label
 from src.i18n import t
+from src.local_store import LocalStore
 from src.ui.components import current_lang
 from src.ui.style import hero
 
@@ -17,6 +18,14 @@ def render() -> None:
 
     if st.button(t("matrix.build", lang), disabled=not resume or not jd):
         st.session_state["matrix_rows"] = build_evidence_matrix(resume, jd, lang)
+        rows = st.session_state["matrix_rows"]
+        LocalStore().record_event(
+            "matrix_build",
+            t("matrix.build", lang),
+            f"{len(rows)} rows",
+            surface="web",
+            metadata={"rows": len(rows), "gaps": sum(1 for row in rows if row.score.status == "GAP")},
+        )
 
     rows = st.session_state.get("matrix_rows", [])
     if rows:

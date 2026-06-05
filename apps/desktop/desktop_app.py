@@ -21,9 +21,10 @@ from src.agents.jd_analyzer import analyze_jd_fallback
 from src.agents.llm_workflow import analyze_jd_with_deepseek, extract_fact_with_deepseek, parse_resume_with_deepseek
 from src.agents.question_planner import pick_next_gap, plan_question
 from src.agents.resume_parser import parse_resume_text_fallback
-from src.config import DEFAULT_MODEL, SUPPORTED_MODELS
+from src.config import APP_VERSION, DEFAULT_MODEL, SUPPORTED_MODELS
 from src.deepseek_client import DeepSeekClient
 from src.i18n import DEFAULT_LANG, LANGUAGES, t
+from src.local_store import LocalStore
 from src.schemas import FactCard, Metric
 from src.security import mask_secret, redact_secrets
 from src.utils.token_logger import TokenLog
@@ -43,6 +44,8 @@ class DesktopApp(tk.Tk):
         self.fact_cards: list[FactCard] = []
         self.bullets = []
         self.token_logs: list[TokenLog] = []
+        self.store = LocalStore()
+        self.guide_tip_index = 0
 
         self.title(t("app.title", self.lang))
         self.geometry("1180x780")
@@ -50,6 +53,8 @@ class DesktopApp(tk.Tk):
         self.configure(bg="#f7f8fb")
         self._configure_style()
         self._build_ui()
+        self.after(500, self._show_startup_guidance)
+        self.after(1000, self._rotate_guide_tip)
 
     def _configure_style(self) -> None:
         style = ttk.Style(self)
@@ -93,6 +98,8 @@ class DesktopApp(tk.Tk):
         self._evidence_tab()
         self._writer_tab()
         self._export_tab()
+        self._history_tab()
+        self._guide_bar()
 
     def _set_language(self, language_name: str) -> None:
         for code, name in LANGUAGES.items():
@@ -260,6 +267,61 @@ class DesktopApp(tk.Tk):
         self.export_preview = self._text(tab, height=28)
         self._render_export_preview()
 
+    def _history_tab(self) -> None:
+        tab = self._tab("nav.history")
+        self._hero(tab, t("nav.history", self.lang), t("history.subtitle", self.lang))
+        summary = self.store.summary()
+        ttk.Label(tab, text=f"{t('history.profile', self.lang)}: {summary['profile_id']}", style="Subtitle.TLabel").pack(anchor=tk.W)
+        ttk.Label(tab, text=f"{t('history.data_dir', self.lang)}: {summary['data_dir']}", style="Subtitle.TLabel").pack(anchor=tk.W, pady=(2, 8))
+
+        panels = ttk.Frame(tab)
+        panels.pack(fill=tk.X, pady=(0, 10))
+        values = [
+            (t("history.records", self.lang), summary["records"]),
+            (t("history.files", self.lang), summary["files"]),
+            (t("token.lifetime_calls", self.lang), summary["lifetime_calls"]),
+            (t("token.lifetime_total", self.lang), summary["lifetime_total_tokens"]),
+        ]
+        for label, value in values:
+            panel = ttk.Frame(panels, style="Panel.TFrame", padding=10)
+            panel.pack(side=tk.LEFT, padx=(0, 10), fill=tk.X, expand=True)
+            ttk.Label(panel, text=label, background="#ffffff").pack(anchor=tk.W)
+            ttk.Label(panel, text=str(value), background="#ffffff", font=("Segoe UI", 14, "bold")).pack(anchor=tk.W)
+
+        text = self._text(tab, height=24)
+        lines = [t("history.compat", self.lang), ""]
+        if self.store.update_notice_needed():
+            lines.extend([self.store.update_notice_text(self.lang), ""])
+        lines.append(f"== {t('history.records', self.lang)} ==")
+        records = self.store.recent_records(12)
+        if records:
+            for record in records:
+                lines.append(f"- {record.get('created_at', '')} [{record.get('event_type', '')}] {record.get('title', '')} :: {record.get('summary', '')}")
+        else:
+            lines.append(t("history.empty_records", self.lang))
+        lines.extend(["", f"== {t('history.files', self.lang)} =="])
+        files = self.store.recent_files(12)
+        if files:
+            for item in files:
+                lines.append(f"- {item.get('created_at', '')} {item.get('label', '')}: {item.get('path', '')}")
+        else:
+            lines.append(t("history.empty_files", self.lang))
+        lines.extend(["", f"== {t('history.tokens', self.lang)} =="])
+        tokens = self.store.recent_tokens(12)
+        if tokens:
+            for row in tokens:
+                lines.append(f"- {row.get('created_at', '')} {row.get('prompt_name', '')}: {row.get('total_tokens', 0)} tokens")
+        else:
+            lines.append(t("token.none", self.lang))
+        self._set_text(text, "\n".join(lines))
+
+    def _guide_bar(self) -> None:
+        bar = ttk.Frame(self, padding=(14, 0, 14, 8))
+        bar.pack(fill=tk.X)
+        self.guide_tip_var = tk.StringVar(value=t("guide.tip.1", self.lang))
+        ttk.Button(bar, text=t("guide.mouse", self.lang), command=self._show_full_guide).pack(side=tk.RIGHT)
+        ttk.Label(bar, textvariable=self.guide_tip_var, style="Subtitle.TLabel").pack(side=tk.RIGHT, padx=(0, 10))
+
     def _hero(self, parent: ttk.Frame, title: str, subtitle: str) -> None:
         ttk.Label(parent, text=title, style="Title.TLabel").pack(anchor=tk.W)
         ttk.Label(parent, text=subtitle, style="Subtitle.TLabel", wraplength=980).pack(anchor=tk.W, pady=(2, 14))
@@ -314,6 +376,7 @@ class DesktopApp(tk.Tk):
     def _add_token_log(self, log: TokenLog | None) -> None:
         if log:
             self.token_logs.append(log)
+            self.store.append_token_log(log, surface="desktop")
             if hasattr(self, "token_frame"):
                 self._render_token_panel()
 
@@ -329,6 +392,7 @@ class DesktopApp(tk.Tk):
             (t("token.input", self.lang), input_tokens),
             (t("token.output", self.lang), output_tokens),
             (t("token.total", self.lang), total),
+            (t("token.lifetime_total", self.lang), self.store.token_summary()["lifetime_total_tokens"]),
         ]
         for label, value in values:
             panel = ttk.Frame(self.token_frame, style="Panel.TFrame", padding=12)
@@ -342,6 +406,7 @@ class DesktopApp(tk.Tk):
         )
         if not path:
             return
+        self.store.copy_file(path, label="resume_file", surface="desktop")
         content = Path(path).read_text(encoding="utf-8", errors="ignore")
         self.resume_textbox.delete("1.0", tk.END)
         self.resume_textbox.insert("1.0", content)
@@ -360,6 +425,15 @@ class DesktopApp(tk.Tk):
         else:
             resume = parse_resume_text_fallback(self.resume_text, self.lang)
         self.master_resume = resume
+        file_id = self.store.save_text_snapshot("resume_parse", self.resume_text, surface="desktop")
+        self.store.record_event(
+            "resume_parse",
+            t("resume.parsed", self.lang),
+            f"{len(self.resume_text)} chars, projects={len(resume.projects)}, experiences={len(resume.experiences)}",
+            surface="desktop",
+            files=[file_id],
+            metadata={"projects": len(resume.projects), "experiences": len(resume.experiences), "skills": len(resume.skills)},
+        )
         self._set_text(self.resume_output, resume.model_dump_json(indent=2))
 
     def _analyze_jd(self) -> None:
@@ -376,6 +450,15 @@ class DesktopApp(tk.Tk):
         else:
             jd = analyze_jd_fallback(self.jd_text, self.lang)
         self.jd_analysis = jd
+        file_id = self.store.save_text_snapshot("jd_analyze", self.jd_text, surface="desktop")
+        self.store.record_event(
+            "jd_analyze",
+            t("jd.done", self.lang),
+            f"{len(self.jd_text)} chars, must={len(jd.must_have_requirements)}, nice={len(jd.nice_to_have_requirements)}",
+            surface="desktop",
+            files=[file_id],
+            metadata={"must_have": len(jd.must_have_requirements), "nice_to_have": len(jd.nice_to_have_requirements)},
+        )
         self._set_text(self.jd_output, jd.model_dump_json(indent=2))
 
     def _build_matrix(self) -> None:
@@ -383,6 +466,13 @@ class DesktopApp(tk.Tk):
             messagebox.showwarning(t("desktop.info", self.lang), t("desktop.run_workflow_first", self.lang))
             return
         self.matrix_rows = build_evidence_matrix(self.master_resume, self.jd_analysis, self.lang)
+        self.store.record_event(
+            "matrix_build",
+            t("matrix.build", self.lang),
+            f"{len(self.matrix_rows)} rows",
+            surface="desktop",
+            metadata={"rows": len(self.matrix_rows), "gaps": sum(1 for row in self.matrix_rows if row.score.status == "GAP")},
+        )
         self._refresh_matrix_tree()
         self._update_interview_prompt()
 
@@ -454,6 +544,13 @@ class DesktopApp(tk.Tk):
                 lang=self.lang,
             )
         self.fact_cards.append(fact)
+        self.store.record_event(
+            "fact_card",
+            t("interview.created", self.lang, fact_id=fact_id),
+            fact.claim,
+            surface="desktop",
+            metadata={"fact_id": fact_id, "requirement": target.requirement_text},
+        )
         self._set_text(self.fact_preview, fact.model_dump_json(indent=2))
         self._refresh_fact_list()
 
@@ -526,6 +623,13 @@ class DesktopApp(tk.Tk):
             messagebox.showwarning(t("desktop.info", self.lang), t("writer.no_requirement", self.lang))
             return
         self.bullets = generate_bullet_variants(self.fact_cards, requirement=requirement, lang=self.lang)
+        self.store.record_event(
+            "bullet_generation",
+            t("writer.generate", self.lang),
+            requirement,
+            surface="desktop",
+            metadata={"bullets": len(self.bullets), "facts": len(self.fact_cards)},
+        )
         self._render_bullets()
         self._render_export_preview()
 
@@ -571,11 +675,45 @@ class DesktopApp(tk.Tk):
         export_path = Path(folder)
         for name, content in outputs.items():
             (export_path / name).write_text(redact_secrets(content), encoding="utf-8")
+        file_ids = self.store.save_export_bundle(outputs, surface="desktop")
+        self.store.record_event(
+            "export_bundle",
+            t("nav.export", self.lang),
+            str(export_path),
+            surface="desktop",
+            files=file_ids,
+            metadata={"file_count": len(outputs)},
+        )
         messagebox.showinfo(t("desktop.info", self.lang), t("desktop.export_done", self.lang, path=export_path))
 
     def _set_text(self, widget: tk.Text, content: str) -> None:
         widget.delete("1.0", tk.END)
         widget.insert("1.0", content)
+
+    def _show_startup_guidance(self) -> None:
+        if not self.store.onboarding_seen("desktop"):
+            self._show_full_guide()
+            self.store.mark_onboarding_seen("desktop")
+            return
+        if self.store.update_notice_needed():
+            messagebox.showinfo(
+                t("guide.update_title", self.lang),
+                f"{self.store.update_notice_text(self.lang)}\n\nCVAGENT {APP_VERSION}",
+            )
+            self.store.mark_version_seen()
+
+    def _show_full_guide(self) -> None:
+        messagebox.showinfo(
+            t("guide.welcome_title", self.lang),
+            f"{t('guide.welcome_body', self.lang)}\n\n{t('guide.feedback', self.lang)}",
+        )
+
+    def _rotate_guide_tip(self) -> None:
+        if hasattr(self, "guide_tip_var"):
+            keys = ["guide.tip.1", "guide.tip.2", "guide.tip.3", "guide.tip.4"]
+            self.guide_tip_var.set(f"{t(keys[self.guide_tip_index % len(keys)], self.lang)}  {t('guide.feedback', self.lang)}")
+            self.guide_tip_index += 1
+        self.after(12000, self._rotate_guide_tip)
 
 
 def main() -> None:

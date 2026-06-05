@@ -5,12 +5,14 @@ import streamlit as st
 from src.agents.jd_analyzer import analyze_jd_fallback
 from src.agents.llm_workflow import analyze_jd_with_deepseek
 from src.i18n import t
+from src.local_store import LocalStore
 from src.ui.components import add_token_log, chips, current_lang, get_client_from_state, render_key_status, render_token_dashboard
 from src.ui.style import hero
 
 
 def render() -> None:
     lang = current_lang()
+    store = LocalStore()
     hero(t("nav.jd", lang), t("jd.subtitle", lang))
     render_key_status()
     render_token_dashboard(compact=True)
@@ -36,6 +38,19 @@ def render() -> None:
                 else:
                     jd = analyze_jd_fallback(text, lang)
                 st.session_state["jd_analysis"] = jd
+                file_id = store.save_text_snapshot("jd_paste", text, surface="web")
+                store.record_event(
+                    "jd_analyze",
+                    t("jd.done", lang),
+                    f"{len(text)} chars, must={len(jd.must_have_requirements)}, nice={len(jd.nice_to_have_requirements)}",
+                    surface="web",
+                    files=[file_id],
+                    metadata={
+                        "must_have": len(jd.must_have_requirements),
+                        "nice_to_have": len(jd.nice_to_have_requirements),
+                        "responsibilities": len(jd.responsibilities),
+                    },
+                )
                 st.success(t("jd.done", lang))
 
     with right:

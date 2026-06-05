@@ -4,6 +4,7 @@ import streamlit as st
 
 from src.agents.exporter import build_export_bundle
 from src.i18n import t
+from src.local_store import LocalStore
 from src.security import contains_secret
 from src.ui.components import current_lang, safe_download
 from src.ui.style import hero
@@ -40,6 +41,18 @@ def render() -> None:
     with cols[1]:
         safe_download(t("export.download_gap", lang), bundle.gap_report_md, "gap_report.md")
         safe_download(t("export.download_interview", lang), bundle.interview_prep_md, "interview_prep.md")
+
+    if st.button(t("export.save_local", lang)):
+        file_ids = LocalStore().save_export_bundle(outputs, surface="web")
+        LocalStore().record_event(
+            "export_bundle",
+            t("nav.export", lang),
+            ", ".join(outputs.keys()),
+            surface="web",
+            files=file_ids,
+            metadata={"file_count": len(outputs)},
+        )
+        st.success(t("export.saved_local", lang))
 
     with st.expander(t("export.preview", lang), expanded=True):
         st.code(bundle.tailored_resume_md, language="markdown")

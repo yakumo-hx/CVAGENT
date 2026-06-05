@@ -6,6 +6,7 @@ from src.agents.fact_extractor import extract_fact_card_from_answer
 from src.agents.llm_workflow import extract_fact_with_deepseek
 from src.agents.question_planner import pick_next_gap, plan_question
 from src.i18n import t
+from src.local_store import LocalStore
 from src.ui.components import add_token_log, current_lang, get_client_from_state, render_key_status, render_token_dashboard
 from src.ui.style import hero
 
@@ -67,6 +68,13 @@ def render() -> None:
                 )
             cards = st.session_state.setdefault("fact_cards", [])
             cards.append(fact)
+            LocalStore().record_event(
+                "fact_card",
+                t("interview.created", lang, fact_id=fact_id),
+                fact.claim,
+                surface="web",
+                metadata={"fact_id": fact_id, "requirement": target.requirement_text},
+            )
             st.success(t("interview.created", lang, fact_id=fact_id))
 
     if st.session_state.get("fact_cards"):
