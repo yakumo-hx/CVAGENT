@@ -342,6 +342,6 @@ TEXT: dict[str, dict[str, str]] = {
 }
 
 
-def t(key: str, lang: str = DEFAULT_LANG, **kwargs: object) -> str:
-    value = TEXT.get(key, {}).get(lang) or TEXT.get(key, {}).get(DEFAULT_LANG) or key
+def t(text_key: str, lang: str = DEFAULT_LANG, **kwargs: object) -> str:
+    value = TEXT.get(text_key, {}).get(lang) or TEXT.get(text_key, {}).get(DEFAULT_LANG) or text_key
     return value.format(**kwargs) if kwargs else value

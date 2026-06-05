@@ -97,9 +97,12 @@ release/desktop/CVAGENT-Desktop.exe
 apps/web/       Streamlit web version
 apps/desktop/   Pure local desktop / exe version
 src/            Shared agent logic, schemas, i18n, security, export
+ops/            Testing, update, and debug operating-system templates
 ```
 
 Feature updates should modify shared `src/` logic where possible, then verify both app entrypoints.
+
+Private source resumes, JD images, API outputs, and run logs should stay in ignored local folders such as `.local_user_archive/` and `.local_runs/`.
 
 ## MVP Workflow
 

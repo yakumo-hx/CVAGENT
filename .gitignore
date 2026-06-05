@@ -23,6 +23,8 @@ exports/
 .streamlit/secrets.toml
 
 .local_research_archive/
+.local_user_archive/
+.local_runs/
 
 dist/
 build/
