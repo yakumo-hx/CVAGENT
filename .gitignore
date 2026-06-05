@@ -27,3 +27,4 @@ exports/
 dist/
 build/
 *.egg-info/
+release/desktop/*.log

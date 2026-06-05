@@ -34,11 +34,15 @@ JD analysis -> evidence gap matrix -> branching interview -> fact cards -> groun
 
 ## Quick Start
 
+The Web version exists because it is the fastest MVP surface for validating the evidence workflow, token monitor, and export loop. It is not the only product surface: the repository also ships a pure local desktop app and a Windows exe from the same shared core.
+
+### Web Version
+
 ```bash
 python -m venv .venv
 .\.venv\Scripts\activate
 pip install -r requirements.txt
-streamlit run app.py
+streamlit run apps/web/app.py
 ```
 
 The current workspace has Python 3.10-compatible scaffolding. Python 3.11+ is recommended for development.
@@ -61,7 +65,45 @@ Then open:
 http://localhost:8501
 ```
 
+### Desktop Version
+
+Run the pure local desktop app without starting a web service:
+
+```powershell
+python apps/desktop/desktop_app.py
+```
+
+or double-click:
+
+```text
+start_desktop.bat
+```
+
+Build a Windows exe:
+
+```powershell
+.\scripts\build_desktop.ps1
+```
+
+The executable is generated at:
+
+```text
+release/desktop/CVAGENT-Desktop.exe
+```
+
+### Version Isolation
+
+```text
+apps/web/       Streamlit web version
+apps/desktop/   Pure local desktop / exe version
+src/            Shared agent logic, schemas, i18n, security, export
+```
+
+Feature updates should modify shared `src/` logic where possible, then verify both app entrypoints.
+
 ## MVP Workflow
+
+Both versions support Chinese / English UI switching, with Chinese as the default.
 
 1. Settings: paste your DeepSeek API key, select `deepseek-v4-flash`, test connection, and watch token usage.
 2. Resume Library: paste or upload `.md/.txt` resume text.

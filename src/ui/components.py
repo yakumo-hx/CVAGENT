@@ -7,6 +7,7 @@ import pandas as pd
 import streamlit as st
 
 from src.deepseek_client import DeepSeekClient
+from src.i18n import DEFAULT_LANG, t
 from src.security import mask_secret, redact_secrets
 from src.utils.token_logger import TokenLog
 
@@ -35,37 +36,48 @@ def token_summary() -> dict[str, int]:
     }
 
 
+def current_lang() -> str:
+    return st.session_state.get("lang", DEFAULT_LANG)
+
+
 def render_token_dashboard(compact: bool = False) -> None:
+    lang = current_lang()
     summary = token_summary()
     if compact:
         st.caption(
-            f"Token usage: {summary['total_tokens']} total "
-            f"({summary['input_tokens']} in / {summary['output_tokens']} out), "
-            f"{summary['calls']} calls"
+            t(
+                "token.compact",
+                lang,
+                total=summary["total_tokens"],
+                input=summary["input_tokens"],
+                output=summary["output_tokens"],
+                calls=summary["calls"],
+            )
         )
         return
     cols = st.columns(4)
-    cols[0].metric("LLM calls", summary["calls"])
-    cols[1].metric("Input tokens", summary["input_tokens"])
-    cols[2].metric("Output tokens", summary["output_tokens"])
-    cols[3].metric("Total tokens", summary["total_tokens"])
+    cols[0].metric(t("token.calls", lang), summary["calls"])
+    cols[1].metric(t("token.input", lang), summary["input_tokens"])
+    cols[2].metric(t("token.output", lang), summary["output_tokens"])
+    cols[3].metric(t("token.total", lang), summary["total_tokens"])
 
 
 def render_token_log_table() -> None:
     logs: list[TokenLog] = st.session_state.get("token_logs", [])
     if not logs:
-        st.info("No model calls yet.")
+        st.info(t("token.none", current_lang()))
         return
     rows = [asdict(row) for row in logs]
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 
 def render_key_status() -> None:
+    lang = current_lang()
     api_key = st.session_state.get("api_key", "")
     if api_key:
-        st.success(f"API key loaded: {mask_secret(api_key)}")
+        st.success(t("key.loaded", lang, key=mask_secret(api_key)))
     else:
-        st.warning("No API key in this session. Local fallback parsing is available.")
+        st.warning(t("key.missing", lang))
 
 
 def safe_download(label: str, content: str, file_name: str, mime: str = "text/plain") -> None:

@@ -7,6 +7,7 @@ from typing import Any
 from openai import OpenAI
 
 from src.config import DEEPSEEK_BASE_URL, DEFAULT_MODEL
+from src.i18n import DEFAULT_LANG, t
 from src.security import redact_secrets
 from src.utils.token_logger import TokenLog
 
@@ -27,18 +28,12 @@ class DeepSeekClient:
         self.model = model
         self.client = OpenAI(api_key=api_key, base_url=DEEPSEEK_BASE_URL)
 
-    def guidance_message(self) -> DeepSeekResult:
+    def guidance_message(self, lang: str = DEFAULT_LANG) -> DeepSeekResult:
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "你是 Resume Evidence Agent 的引导助手。"
-                        "只返回一句简短中文，引导用户粘贴简历和目标 JD。"
-                    ),
-                },
-                {"role": "user", "content": "请给用户一句开场引导。"},
+                {"role": "system", "content": t("deepseek.guide.system", lang)},
+                {"role": "user", "content": t("deepseek.guide.user", lang)},
             ],
             temperature=0,
             max_tokens=80,
@@ -50,8 +45,8 @@ class DeepSeekClient:
             token_log=_token_log_from_response("settings.guidance_message", self.model, response),
         )
 
-    def test_connection(self) -> str:
-        return self.guidance_message().content
+    def test_connection(self, lang: str = DEFAULT_LANG) -> str:
+        return self.guidance_message(lang).content
 
     def json_chat(
         self,

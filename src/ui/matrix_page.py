@@ -3,38 +3,46 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from src.agents.evidence_matcher import build_evidence_matrix
+from src.agents.evidence_matcher import build_evidence_matrix, gap_text, next_question, status_label
+from src.i18n import t
+from src.ui.components import current_lang
 from src.ui.style import hero
 
 
 def render() -> None:
-    hero("Evidence Matrix", "生成 JD 要求与简历证据的匹配矩阵，优先暴露弱证据和缺证据。")
+    lang = current_lang()
+    hero(t("nav.matrix", lang), t("matrix.subtitle", lang))
     resume = st.session_state.get("master_resume")
     jd = st.session_state.get("jd_analysis")
 
-    if st.button("Build matrix", disabled=not resume or not jd):
-        st.session_state["matrix_rows"] = build_evidence_matrix(resume, jd)
+    if st.button(t("matrix.build", lang), disabled=not resume or not jd):
+        st.session_state["matrix_rows"] = build_evidence_matrix(resume, jd, lang)
 
     rows = st.session_state.get("matrix_rows", [])
     if rows:
         cols = st.columns(5)
         statuses = [row.score.status for row in rows]
         for idx, status in enumerate(["DIRECT", "TRANSFERABLE", "ADJACENT", "WEAK", "GAP"]):
-            cols[idx].metric(status, statuses.count(status))
+            cols[idx].metric(status_label(status, lang), statuses.count(status))
         st.dataframe(
             pd.DataFrame(
                 [
                     {
-                        "JD requirement": row.requirement_text,
-                        "Best evidence": row.best_evidence_summary,
-                        "Direct": row.score.direct,
-                        "Transferable": row.score.transferable,
-                        "Adjacent": row.score.adjacent,
-                        "Impact": row.score.impact,
-                        "Score": row.score.total,
-                        "Status": row.score.status,
-                        "Gap": row.gap,
-                        "Next question": row.next_question,
+                        t("matrix.req", lang): row.requirement_text,
+                        t("matrix.evidence", lang): row.best_evidence_summary,
+                        t("matrix.direct", lang): row.score.direct,
+                        t("matrix.transferable", lang): row.score.transferable,
+                        t("matrix.adjacent", lang): row.score.adjacent,
+                        t("matrix.impact", lang): row.score.impact,
+                        t("matrix.score", lang): row.score.total,
+                        t("matrix.status", lang): status_label(row.score.status, lang),
+                        t("matrix.gap", lang): gap_text(row.score.status, lang),
+                        t("matrix.question", lang): next_question(
+                            row.requirement_text,
+                            row.best_evidence_summary,
+                            row.score.status,
+                            lang,
+                        ),
                     }
                     for row in rows
                 ]
@@ -42,4 +50,4 @@ def render() -> None:
             use_container_width=True,
         )
     else:
-        st.info("Parse a resume and JD first, then build the evidence matrix.")
+        st.info(t("matrix.waiting", lang))

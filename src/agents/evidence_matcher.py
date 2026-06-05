@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from src.agents.jd_analyzer import flatten_requirements
+from src.i18n import DEFAULT_LANG, t
 from src.schemas import JDAnalysis, MatchScore, MatrixRow, MasterResume, ResumeItem
 
 
-def build_evidence_matrix(resume: MasterResume, jd: JDAnalysis) -> list[MatrixRow]:
+def build_evidence_matrix(resume: MasterResume, jd: JDAnalysis, lang: str = DEFAULT_LANG) -> list[MatrixRow]:
     rows: list[MatrixRow] = []
     evidence_items = resume.projects + resume.experiences
 
@@ -17,11 +18,27 @@ def build_evidence_matrix(resume: MasterResume, jd: JDAnalysis) -> list[MatrixRo
                 best_evidence_id=best_item.id if best_item else None,
                 best_evidence_summary=best_item.description if best_item else "",
                 score=score,
-                gap=_gap_text(score.status),
-                next_question=_next_question(requirement.text, best_item, score.status),
+                gap=gap_text(score.status, lang),
+                next_question=next_question(requirement.text, best_item.title if best_item else "", score.status, lang),
             )
         )
     return rows
+
+
+def status_label(status: str, lang: str = DEFAULT_LANG) -> str:
+    return t(f"status.{status.lower()}", lang)
+
+
+def gap_text(status: str, lang: str = DEFAULT_LANG) -> str:
+    return t(f"matrix.gap.{status.lower()}", lang)
+
+
+def next_question(requirement: str, evidence_label: str = "", status: str = "", lang: str = DEFAULT_LANG) -> str:
+    if status in {"DIRECT", "TRANSFERABLE"}:
+        return t("matrix.next.strong", lang)
+    if evidence_label:
+        return t("matrix.next.related", lang, requirement=requirement)
+    return t("matrix.next.missing", lang, requirement=requirement)
 
 
 def score_requirement_against_item(requirement: str, item: ResumeItem) -> MatchScore:
@@ -70,21 +87,3 @@ def _status(total: int) -> str:
     if total >= 45:
         return "WEAK"
     return "GAP"
-
-
-def _gap_text(status: str) -> str:
-    return {
-        "DIRECT": "已有强证据，可用于简历前置",
-        "TRANSFERABLE": "有可迁移证据，需要补充岗位语言",
-        "ADJACENT": "有相邻经验，需要追问细节",
-        "WEAK": "证据较弱，需要补充角色、工具、结果",
-        "GAP": "当前简历缺少对应证据",
-    }[status]
-
-
-def _next_question(requirement: str, item: ResumeItem | None, status: str) -> str:
-    if status in {"DIRECT", "TRANSFERABLE"}:
-        return "是否有更具体的数据、链接或成果可以增强这条证据？"
-    if item:
-        return f"你在「{item.title}」中是否真实做过和「{requirement}」相关的具体动作？"
-    return f"你是否有任何课程、项目、自学或实践经历可以证明「{requirement}」？"

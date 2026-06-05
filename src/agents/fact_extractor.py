@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 
+from src.i18n import DEFAULT_LANG, t
 from src.schemas import FactCard, Metric
 
 
@@ -11,6 +12,7 @@ def extract_fact_card_from_answer(
     fact_id: str,
     related_requirement: str,
     related_experience: str = "",
+    lang: str = DEFAULT_LANG,
 ) -> FactCard:
     tools = _extract_tools(answer)
     metrics = _extract_metrics(answer)
@@ -26,7 +28,7 @@ def extract_fact_card_from_answer(
         role=role,
         outcome=_extract_outcome(answer),
         confidence="medium" if len(answer.strip()) >= 20 else "low",
-        risk="" if metrics else "缺少可量化结果，生成 bullet 时应使用保守表达或占位符",
+        risk="" if metrics else t("fact.risk.no_metric", lang),
         can_use_in_resume=False,
         needs_confirmation=True,
     )

@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import re
 
+from src.i18n import DEFAULT_LANG, t
 from src.schemas import JDAnalysis, JDRequirement
 
 
-def analyze_jd_fallback(text: str) -> JDAnalysis:
+def analyze_jd_fallback(text: str, lang: str = DEFAULT_LANG) -> JDAnalysis:
     """Heuristic JD parser used as a local fallback."""
 
     lines = [line.strip("- •\t ") for line in text.splitlines() if line.strip()]
@@ -23,7 +24,7 @@ def analyze_jd_fallback(text: str) -> JDAnalysis:
                 text=line,
                 category=category,  # type: ignore[arg-type]
                 keywords=_extract_keywords(line),
-                evidence_needed=_evidence_needed(line),
+                evidence_needed=_evidence_needed(line, lang),
             )
         )
 
@@ -34,7 +35,7 @@ def analyze_jd_fallback(text: str) -> JDAnalysis:
         responsibilities=[item for item in requirements if item.category == "responsibility"],
         hidden_expectations=[],
         keywords=sorted({kw for item in requirements for kw in item.keywords}),
-        interview_risks=["需要能解释简历中每条强匹配 bullet 的事实来源"],
+        interview_risks=[t("jd.fallback_interview_risk", lang)],
     )
 
 
@@ -76,10 +77,10 @@ def _extract_keywords(text: str) -> list[str]:
     return sorted(set(found))
 
 
-def _evidence_needed(text: str) -> list[str]:
-    needs = ["具体角色", "实际动作"]
+def _evidence_needed(text: str, lang: str) -> list[str]:
+    needs = [t("jd.evidence.role", lang), t("jd.evidence.action", lang)]
     if any(token in text for token in ("指标", "增长", "提升", "优化", "成本", "效率")):
-        needs.append("结果指标")
+        needs.append(t("jd.evidence.metric", lang))
     if any(token in text for token in ("Agent", "工作流", "系统", "平台", "开发")):
-        needs.extend(["技术栈", "架构细节"])
+        needs.extend([t("jd.evidence.stack", lang), t("jd.evidence.architecture", lang)])
     return needs

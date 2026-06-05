@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import re
 
+from src.i18n import DEFAULT_LANG, t
 from src.schemas import FactCard, ResumeBullet, RiskFinding
 
 
 NUMBER_RE = re.compile(r"\d+(?:\.\d+)?\s*(?:%|人|个|次|轮|条|小时|天|周|月|年|k|K|万)?")
 
 
-def audit_bullet(bullet: ResumeBullet, facts: list[FactCard]) -> list[RiskFinding]:
+def audit_bullet(bullet: ResumeBullet, facts: list[FactCard], lang: str = DEFAULT_LANG) -> list[RiskFinding]:
     findings: list[RiskFinding] = []
     source_facts = [fact for fact in facts if fact.fact_id in bullet.fact_ids]
 
@@ -16,7 +17,7 @@ def audit_bullet(bullet: ResumeBullet, facts: list[FactCard]) -> list[RiskFindin
         findings.append(
             RiskFinding(
                 code="fact_id_required",
-                message="正式 bullet 必须绑定至少一个 fact_id。",
+                message=t("risk.fact_id_required", lang),
                 severity="high",
             )
         )
@@ -25,7 +26,7 @@ def audit_bullet(bullet: ResumeBullet, facts: list[FactCard]) -> list[RiskFindin
         findings.append(
             RiskFinding(
                 code="unsupported_metric",
-                message="bullet 包含数字或比例，但来源事实卡没有已提供指标。",
+                message=t("risk.unsupported_metric", lang),
                 severity="high",
             )
         )
@@ -34,7 +35,7 @@ def audit_bullet(bullet: ResumeBullet, facts: list[FactCard]) -> list[RiskFindin
         findings.append(
             RiskFinding(
                 code="role_inflation",
-                message="bullet 使用了“主导”，但来源事实卡没有确认主导角色。",
+                message=t("risk.role_inflation", lang),
                 severity="high",
             )
         )
