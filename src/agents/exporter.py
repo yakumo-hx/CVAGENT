@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+from src.security import redact_secrets
 from src.schemas import ExportBundle, FactCard, JDAnalysis, MatrixRow, ResumeBullet
 
 
@@ -13,11 +14,13 @@ def build_export_bundle(
     matrix_rows: list[MatrixRow],
 ) -> ExportBundle:
     return ExportBundle(
-        tailored_resume_md=_resume_md(bullets),
-        evidence_cards_json=json.dumps([fact.model_dump() for fact in facts], ensure_ascii=False, indent=2),
-        jd_analysis_json=jd.model_dump_json(indent=2) if jd else "{}",
-        gap_report_md=_gap_report(matrix_rows),
-        interview_prep_md=_interview_prep(bullets),
+        tailored_resume_md=redact_secrets(_resume_md(bullets)),
+        evidence_cards_json=redact_secrets(
+            json.dumps([fact.model_dump() for fact in facts], ensure_ascii=False, indent=2)
+        ),
+        jd_analysis_json=redact_secrets(jd.model_dump_json(indent=2) if jd else "{}"),
+        gap_report_md=redact_secrets(_gap_report(matrix_rows)),
+        interview_prep_md=redact_secrets(_interview_prep(bullets)),
     )
 
 

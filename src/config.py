@@ -6,3 +6,14 @@ SUPPORTED_MODELS = ("deepseek-v4-flash", "deepseek-v4-pro")
 
 APP_NAME = "Resume Evidence Agent"
 APP_VERSION = "0.1.0"
+
+TOKEN_COST_HINTS = {
+    "deepseek-v4-flash": {
+        "input_per_million_usd": None,
+        "output_per_million_usd": None,
+    },
+    "deepseek-v4-pro": {
+        "input_per_million_usd": None,
+        "output_per_million_usd": None,
+    },
+}

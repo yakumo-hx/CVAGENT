@@ -43,6 +43,35 @@ streamlit run app.py
 
 The current workspace has Python 3.10-compatible scaffolding. Python 3.11+ is recommended for development.
 
+Windows one-click style startup:
+
+```powershell
+.\run_app.ps1
+```
+
+or double-click:
+
+```text
+start.bat
+```
+
+Then open:
+
+```text
+http://localhost:8501
+```
+
+## MVP Workflow
+
+1. Settings: paste your DeepSeek API key, select `deepseek-v4-flash`, test connection, and watch token usage.
+2. Resume Library: paste or upload `.md/.txt` resume text.
+3. JD Analyzer: paste one target job description.
+4. Evidence Matrix: build the JD requirement to resume evidence table.
+5. Branching Interview: answer one focused follow-up question at a time.
+6. Evidence Cards: confirm, edit, or delete extracted fact cards.
+7. Resume Writer: generate conservative, standard, and JD-strong bullet variants from confirmed facts.
+8. Export: download Markdown, JSON, gap report, and interview prep files.
+
 ## Privacy
 
 - This project runs locally.
@@ -50,6 +79,8 @@ The current workspace has Python 3.10-compatible scaffolding. Python 3.11+ is re
 - Resume and JD text are sent to DeepSeek API only when the user triggers model calls.
 - This project does not upload data to any author-owned server.
 - Local databases, logs, uploads, exports, and private research notes are ignored by git.
+- API keys matching `ds-...` are redacted from export bundles and logs shown by the app.
+- Token monitoring records call name, model, and token counts only. It does not store API keys.
 
 ## Limitations
 
