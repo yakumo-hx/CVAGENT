@@ -1,0 +1,14 @@
+[project]
+name = "resume-evidence-agent"
+version = "0.1.0"
+description = "A local-first DeepSeek-powered resume evidence mining agent."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+  { name = "yakumo-hx" }
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
